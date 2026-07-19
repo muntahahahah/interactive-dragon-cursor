@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dragon Cursor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            overflow: hidden;
+            cursor: none;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #e0e0e0;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .info h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #ff6b6b;
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="info">
+        <h1>🐉 Interactive Dragon Cursor</h1>
+        <p>Move your mouse to control the dragon!</p>
+        <p>Click to make it dash!</p>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Configuration
+        const N = 40; // Number of segments
+        const SEGMENT_DISTANCE = 12; // Distance between segments
+        const SMOOTHING = 0.15; // How smoothly the head follows mouse (0-1)
+
+        // Mouse state
+        const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+        const target = { x: canvas.width / 2, y: canvas.height / 2 };
+        let isDashing = false;
+        let dashSpeed = 1;
+
+        // Dragon segments array
+        const segments = [];
+
+        // Initialize segments
+        for (let i = 0; i < N; i++) {
+            segments.push({
+                x: canvas.width / 2,
+                y: canvas.height / 2 + i * SEGMENT_DISTANCE,
+                angle: 0
+            });
+        }
+
+        // Mouse tracking
+        window.addEventListener('mousemove', (e) => {
+            target.x = e.clientX;
+            target.y = e.clientY;
+        });
+
+        window.addEventListener('mousedown', () => {
+            isDashing = true;
+            dashSpeed = 3;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDashing = false;
+            dashSpeed = 1;
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Get angle between two points
+        function getAngle(x1, y1, x2, y2) {
+            return Math.atan2(y2 - y1, x2 - x1);
+        }
+
+        // Get distance between two points
+        function getDistance(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
+        // Draw the dragon head
+        function drawHead(x, y, angle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            // Head shape
+            ctx.fillStyle = '#2d2d2d';
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 2;
+
+            // Main head
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.quadraticCurveTo(5, -8, -10, -6);
+            ctx.lineTo(-12, -10);
+            ctx.lineTo(-8, -5);
+            ctx.lineTo(-12, 0);
+            ctx.lineTo(-8, 5);
+            ctx.lineTo(-12, 10);
+            ctx.lineTo(-10, 6);
+            ctx.quadraticCurveTo(5, 8, 15, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Eye
+            ctx.fillStyle = '#ff6b6b';
+            ctx.beginPath();
+            ctx.arc(5, -3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Horn
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(-5, -6);
+            ctx.quadraticCurveTo(-2, -14, 2, -12);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Draw a spine segment
+        function drawSpine(x, y, angle, index) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            const size = Math.max(2, 6 - index * 0.1);
+
+            ctx.fillStyle = '#2d2d2d';
+            ctx.strokeStyle = '#4ecdc4';
+            ctx.lineWidth = 1.5;
+
+            // Spine spike
+            ctx.beginPath();
+            ctx.moveTo(size, 0);
+            ctx.lineTo(-size, -size);
+            ctx.lineTo(-size * 0.5, 0);
+            ctx.lineTo(-size, size);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Draw fins
+        function drawFin(x, y, angle, side) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle + (side * Math.PI / 2));
+
+            ctx.fillStyle = '#2d2d2d';
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 1.5;
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(8, -12, 20, -8);
+            ctx.quadraticCurveTo(12, 0, 20, 8);
+            ctx.quadraticCurveTo(8, 12, 0, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Draw tail
+        function drawTail(x, y, angle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            ctx.strokeStyle = '#4ecdc4';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(-15, -5, -25, 0);
+            ctx.quadraticCurveTo(-15, 5, 0, 0);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Main animation loop
+        function animate() {
+            ctx.fillStyle = 'rgba(26, 26, 46, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Smooth mouse following for head
+            const dx = target.x - mouse.x;
+            const dy = target.y - mouse.y;
+            mouse.x += dx * SMOOTHING * dashSpeed;
+            mouse.y += dy * SMOOTHING * dashSpeed;
+
+            // Update head position
+            segments[0].x = mouse.x;
+            segments[0].y = mouse.y;
+
+            // Update body segments (each follows the previous one)
+            for (let i = 1; i < N; i++) {
+                const prev = segments[i - 1];
+                const curr = segments[i];
+
+                const angle = getAngle(curr.x, curr.y, prev.x, prev.y);
+                const dist = getDistance(curr.x, curr.y, prev.x, prev.y);
+
+                // Move current segment toward previous one, maintaining distance
+                const targetDist = SEGMENT_DISTANCE;
+                if (dist > targetDist) {
+                    const ratio = (dist - targetDist) / dist;
+                    curr.x += (prev.x - curr.x) * ratio * 0.5;
+                    curr.y += (prev.y - curr.y) * ratio * 0.5;
+                }
+
+                curr.angle = angle;
+            }
+
+            // Calculate head angle
+            if (N > 1) {
+                segments[0].angle = getAngle(segments[1].x, segments[1].y, segments[0].x, segments[0].y);
+            }
+
+            // Draw from tail to head (so head is on top)
+            for (let i = N - 1; i >= 0; i--) {
+                const seg = segments[i];
+
+                if (i === 0) {
+                    // Head
+                    drawHead(seg.x, seg.y, seg.angle);
+                } else if (i === N - 1) {
+                    // Tail
+                    drawTail(seg.x, seg.y, seg.angle);
+                } else if (i === 8 || i === 14) {
+                    // Fins
+                    drawSpine(seg.x, seg.y, seg.angle, i);
+                    drawFin(seg.x, seg.y, seg.angle, 1);  // Right fin
+                    drawFin(seg.x, seg.y, seg.angle, -1); // Left fin
+                } else {
+                    // Regular spine
+                    drawSpine(seg.x, seg.y, seg.angle, i);
+                }
+            }
+
+            // Draw connection lines between segments (subtle)
+            ctx.strokeStyle = 'rgba(78, 205, 196, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i < N - 1; i++) {
+                ctx.moveTo(segments[i].x, segments[i].y);
+                ctx.lineTo(segments[i + 1].x, segments[i + 1].y);
+            }
+            ctx.stroke();
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
